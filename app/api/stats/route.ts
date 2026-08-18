@@ -18,6 +18,11 @@ export async function GET(req: NextRequest) {
         .order('date', { ascending: false });
       if (completionsError) throw completionsError;
 
+      // No tasks configured yet: nothing to have a streak on.
+      if (allTasks.length === 0) {
+        return NextResponse.json({ streak: 0 });
+      }
+
       // Calculate streak
       let currentStreak = 0;
       let checkDate = new Date(); // Start checking from today
