@@ -23,6 +23,7 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
   const [isAdding, setIsAdding] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
   const [newTask, setNewTask] = useState({
     dayOfWeek: 1,
     label: '',
@@ -89,6 +90,9 @@ export default function Settings() {
   };
 
   const seedDefaultRoutine = async () => {
+    if (isSeeding) return;
+    setIsSeeding(true);
+
     const defaultTasks = [
       { dayOfWeek: 1, label: 'Sistemas Operacionais', timeRange: '07:00 - 08:00', category: 'Estudo' },
       { dayOfWeek: 1, label: 'Musculação', timeRange: '08:00 - 09:00', category: 'Treino' },
@@ -104,20 +108,24 @@ export default function Settings() {
       { dayOfWeek: 0, label: 'História Afro-Indígena / Gestão Financeira', timeRange: '', category: 'Estudo' }
     ];
 
-    const token = await getIdToken();
-    if (!token) return;
+    try {
+      const token = await getIdToken();
+      if (!token) return;
 
-    for (const t of defaultTasks) {
-      await fetch('/api/tasks', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(t)
-      });
+      for (const t of defaultTasks) {
+        await fetch('/api/tasks', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(t)
+        });
+      }
+      await fetchTasks();
+    } finally {
+      setIsSeeding(false);
     }
-    fetchTasks();
   };
 
   if (loading) {
@@ -220,11 +228,12 @@ export default function Settings() {
           {tasks.length === 0 && !isAdding ? (
             <div className="text-center py-10 bg-background rounded-2xl border border-primary/5">
               <p className="text-secondary mb-5 font-medium">Sua rotina está vazia.</p>
-              <button 
+              <button
                 onClick={seedDefaultRoutine}
-                className="bg-primary text-surface px-6 py-3 rounded-2xl font-bold shadow-lg hover:bg-opacity-90 transition-opacity"
+                disabled={isSeeding}
+                className="bg-primary text-surface px-6 py-3 rounded-2xl font-bold shadow-lg hover:bg-opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Carregar Rotina ADS
+                {isSeeding ? 'Carregando...' : 'Carregar Rotina ADS'}
               </button>
             </div>
           ) : (
