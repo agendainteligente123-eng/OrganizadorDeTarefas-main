@@ -37,7 +37,13 @@ export async function GET(req: NextRequest) {
         completionsByDate.get(comp.date)!.add(comp.taskId);
       }
 
-      while (true) {
+      // Hard cap so a user with no tasks/history yet (every day counts as
+      // "completed" with 0/0 required tasks) can't loop forever.
+      const MAX_DAYS_CHECKED = 3650;
+      let daysChecked = 0;
+
+      while (daysChecked < MAX_DAYS_CHECKED) {
+        daysChecked++;
         const dateStr = format(checkDate, 'yyyy-MM-dd');
         const dayOfWeek = checkDate.getDay();
         const requiredTasks = tasksByDay.get(dayOfWeek) || [];
