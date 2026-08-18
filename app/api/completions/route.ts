@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/src/lib/auth-middleware';
-import { db } from '@/src/db';
-import { completions } from '@/src/db/schema';
-import { eq, and, gte, lte } from 'drizzle-orm';
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async (req, ctx) => {
@@ -11,11 +8,16 @@ export async function GET(req: NextRequest) {
       const startDate = searchParams.get('startDate');
       const endDate = searchParams.get('endDate');
 
-      let conditions = [eq(completions.userId, ctx.uid)];
-      if (startDate) conditions.push(gte(completions.date, startDate));
-      if (endDate) conditions.push(lte(completions.date, endDate));
+      let query = ctx.supabase
+        .from('completions')
+        .select('taskId:task_id, date')
+        .eq('user_id', ctx.uid);
 
-      const data = await db.select().from(completions).where(and(...conditions));
+      if (startDate) query = query.gte('date', startDate);
+      if (endDate) query = query.lte('date', endDate);
+
+      const { data, error } = await query;
+      if (error) throw error;
       return NextResponse.json(data);
     } catch (error) {
       console.error(error);

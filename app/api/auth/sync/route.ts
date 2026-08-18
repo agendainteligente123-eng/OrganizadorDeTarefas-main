@@ -5,7 +5,7 @@ import { getOrCreateUser } from '@/src/db/users';
 export async function POST(req: NextRequest) {
   return withAuth(req, async (req, ctx) => {
     try {
-      const dbUser = await getOrCreateUser(ctx.uid, ctx.email);
+      const dbUser = await getOrCreateUser(ctx.supabase, ctx.uid, ctx.email);
       return NextResponse.json(dbUser);
     } catch (error) {
       console.error(error);

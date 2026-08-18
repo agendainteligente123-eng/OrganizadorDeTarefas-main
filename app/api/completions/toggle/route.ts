@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/src/lib/auth-middleware';
-import { db } from '@/src/db';
-import { completions } from '@/src/db/schema';
-import { eq, and } from 'drizzle-orm';
 
 export async function POST(req: NextRequest) {
   return withAuth(req, async (req, ctx) => {
@@ -10,24 +7,29 @@ export async function POST(req: NextRequest) {
       const body = await req.json();
       const { taskId, date } = body;
 
-      // Check if it already exists
-      const existing = await db.select().from(completions).where(and(
-        eq(completions.userId, ctx.uid),
-        eq(completions.taskId, taskId),
-        eq(completions.date, date)
-      ));
+      const { data: existing, error: selectError } = await ctx.supabase
+        .from('completions')
+        .select('id')
+        .eq('user_id', ctx.uid)
+        .eq('task_id', taskId)
+        .eq('date', date);
 
-      if (existing.length > 0) {
-        // Toggle off: delete
-        await db.delete(completions).where(eq(completions.id, existing[0].id));
+      if (selectError) throw selectError;
+
+      if (existing && existing.length > 0) {
+        const { error: deleteError } = await ctx.supabase
+          .from('completions')
+          .delete()
+          .eq('id', existing[0].id);
+
+        if (deleteError) throw deleteError;
         return NextResponse.json({ completed: false });
       } else {
-        // Toggle on: insert
-        await db.insert(completions).values({
-          userId: ctx.uid,
-          taskId,
-          date,
-        });
+        const { error: insertError } = await ctx.supabase
+          .from('completions')
+          .insert({ user_id: ctx.uid, task_id: taskId, date });
+
+        if (insertError) throw insertError;
         return NextResponse.json({ completed: true });
       }
     } catch (error) {

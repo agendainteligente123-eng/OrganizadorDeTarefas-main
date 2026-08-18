@@ -1,15 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/src/lib/auth-middleware';
-import { db } from '@/src/db';
-import { tasks, completions } from '@/src/db/schema';
-import { eq, desc } from 'drizzle-orm';
-import { format, subDays, parseISO } from 'date-fns';
+import { format, subDays } from 'date-fns';
 
 export async function GET(req: NextRequest) {
   return withAuth(req, async (req, ctx) => {
     try {
-      const allTasks = await db.select().from(tasks).where(eq(tasks.userId, ctx.uid));
-      const allCompletions = await db.select().from(completions).where(eq(completions.userId, ctx.uid)).orderBy(desc(completions.date));
+      const { data: allTasks, error: tasksError } = await ctx.supabase
+        .from('tasks')
+        .select('id, dayOfWeek:day_of_week')
+        .eq('user_id', ctx.uid);
+      if (tasksError) throw tasksError;
+
+      const { data: allCompletions, error: completionsError } = await ctx.supabase
+        .from('completions')
+        .select('taskId:task_id, date')
+        .eq('user_id', ctx.uid)
+        .order('date', { ascending: false });
+      if (completionsError) throw completionsError;
 
       // Calculate streak
       let currentStreak = 0;
@@ -35,7 +42,7 @@ export async function GET(req: NextRequest) {
         const dayOfWeek = checkDate.getDay();
         const requiredTasks = tasksByDay.get(dayOfWeek) || [];
 
-        // If there are no tasks for this day, does it break the streak? 
+        // If there are no tasks for this day, does it break the streak?
         // Usually rest days don't break the streak, or they count as a free pass.
         // Let's assume if there are no tasks, it counts as "100%" (completed 0/0).
         let dayCompleted = true;
@@ -51,7 +58,7 @@ export async function GET(req: NextRequest) {
         }
 
         if (dayCompleted) {
-          // If it's today and not completed yet, we don't break the streak from yesterday, 
+          // If it's today and not completed yet, we don't break the streak from yesterday,
           // we just don't increment it if it's false, but wait, the loop breaks.
           // Let's refine:
           currentStreak++;
