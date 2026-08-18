@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from './AuthProvider';
 import { Plus, Trash2, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { auth } from '../lib/firebase';
+import { createClient } from '../lib/supabase/client';
 
 type Task = {
   id: number;
@@ -21,6 +21,7 @@ export default function Settings() {
   const { getIdToken, user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const supabase = createClient();
   const [isAdding, setIsAdding] = useState(false);
   const [newTask, setNewTask] = useState({
     dayOfWeek: 1,
@@ -268,7 +269,7 @@ export default function Settings() {
         <div className="text-center mt-8 pb-4">
           <p className="text-xs font-semibold text-secondary/60">Logado como: {user?.email}</p>
           <button 
-            onClick={() => auth.signOut()}
+            onClick={() => supabase.auth.signOut()}
             className="text-xs text-red-500 font-bold mt-2 px-4 py-2 hover:bg-red-50 rounded-xl transition-colors uppercase tracking-wider"
           >
             Sair da conta
